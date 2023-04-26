@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<feed  version="1.0" hasPendingRequests="false" >
+  <company></company>
+  <status>200</status>
+  <errmsg>OK</errmsg>
+  <interval>0</interval>
+    <entry type="predatasource">
+        <version>1675442728</version>
+        <name>Microsoft_ActiveDirectory_Users</name>
+        <displayedas>Users</displayedas>
+        <description>Active Directory User list.</description>
+        <collector>script</collector>
+        <hasMultiInstances>false</hasMultiInstances>
+        <useWildValueAsUniqueIdentifier>false</useWildValueAsUniqueIdentifier>
+        <schedule>14400</schedule>
+        <appliesTo>hasCategory(&#34;MicrosoftDomainController&#34;) &#38;&#38; hasCategory(&#34;InfrastructureMaster&#34;)</appliesTo>
+        <wildcardauto>false</wildcardauto>
+        <wildcardpersist>false</wildcardpersist>
+        <wildcardlinuxscript></wildcardlinuxscript>
+        <wildcardlinuxcmdline></wildcardlinuxcmdline>
+        <wildcardwinscript></wildcardwinscript>
+        <wildcardwincmdline></wildcardwincmdline>
+        <wildcardgroovyscript></wildcardgroovyscript>
+        <wildcardschedule>1440</wildcardschedule>
+        <wildcarddisable>false</wildcarddisable>
+        <wildcarddeleteinactive>false</wildcarddeleteinactive>
+        <agdmethod>none</agdmethod>
+        <agdparams></agdparams>
+        <group>Active Directory Configs</group>
+        <tags>ad,active directory,configuration,microsoft</tags>
+        <technology>Created by nicholas.doane@logicmonitor.com</technology>
+        <adlist><![CDATA[{"agdmethod":"none","agdparams":"","id":0,"filters":[],"params":{}}]]></adlist>
+        <schemaVersion>2</schemaVersion>
+        <dataSourceType>2</dataSourceType>
+        <attributes>
+        <attribute>
+            <name>scripttype</name>
+            <value>powerShell</value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>scriptgroovy</name>
+            <value>&#60;# © 2007-2022 - LogicMonitor, Inc.  All rights reserved. #&#62;
+#
+#Requires -Version 3
+#------------------------------------------------------------------------------------------------------------
+# Clears the CLI of any text
+Clear-Host
+# Clears memory of all previous variables
+Remove-Variable * -ErrorAction SilentlyContinue
+#------------------------------------------------------------------------------------------------------------
+$wmi_user = @&#39;
+##WMI.USER##
+&#39;@
+$wmi_pass = @&#39;
+##WMI.PASS##
+&#39;@
+$hostname = &#34;##SYSTEM.HOSTNAME##&#34;.ToLower()
+$winRM = &#39;##AUTO.WINRM##&#39;.ToLower()
+$deviceType = &#39;##SYSTEM.DEVICETYPE##&#39;.ToLower()
+## Debug flag
+$DEBUG = $false
+
+## check to see if the device is an azure cloud device.  If it is then use the azure computer name
+if ($deviceType -eq &#39;4&#39;) {
+    $hostname = &#39;##system.azure.computerName##&#39;
+}
+
+#$winRM will default to enabled since the property source that sets it isn&#39;t universal.
+if ($winRM -EQ &#39;##auto.winrm##&#39;) {
+    $winRM = &#39;enabled&#39;
+}
+
+$collectorName = [System.Net.Dns]::GetHostByName($env:computerName).HostName.tolower()
+
+# If the hostname is an IP address query DNS for the FQDN
+if ($hostname -match &#34;\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b&#34;) {
+    $hostname = [System.Net.Dns]::GetHostbyAddress($hostname).HostName.ToLower()
+}
+if ($DEBUG) { &#34;--DEBUG-- Hostname: $hostname&#34; }
+if ($DEBUG) { &#34;--DEBUG-- PS Version: $( $PSVersionTable.PSVersion )&#34; }
+if ($DEBUG) { &#34;--DEBUG-- CollectorName $collectorName &#34; }
+if ($DEBUG) { &#34;--DEBUG-- winRM $winRM &#34; }
+
+## check to see if this is monitoring the localhost collector, as we will not need to authenticate.
+if ($HOSTNAME -like $COLLECTORNAME) {
+    if ($DEBUG) { &#34;--DEBUG-- Hostname is equal Collector name&#34; }
+    $session = New-PSSession
+}
+# are wmi user/pass set -- e.g. are these device props either not substiuted or blank
+elseif (([string]::IsNullOrWhiteSpace($WMI_USER) -and [string]::IsNullOrWhiteSpace($WMI_PASS)) -or (($WMI_USER -like &#39;*WMI.USER*&#39;) -and ($WMI_PASS -like &#39;*WMI.PASS*&#39;) -and $winRM -eq &#39;enabled&#39; )) {
+    # no WMI password available.  Use service name user and password
+    if ($DEBUG) { &#34;--DEBUG-- Collector user being used.&#34; }
+    $session = New-PSSession  -ComputerName $hostname
+}
+elseif ($winRM -eq &#34;enabled&#34;) {
+
+    if ($DEBUG) { &#34;--DEBUG-- Remote Creds: Converting user/pass to credential string&#34; }
+    # Use remote powershell with wmi.user and wmi.pass. convert user/password into a credential string
+    $remote_pass = ConvertTo-SecureString -String $WMI_PASS -AsPlainText -Force;
+    $remote_credential = New-Object -typename System.Management.Automation.PSCredential -argumentlist $WMI_USER, $remote_pass;
+    $session = New-PSSession -Credential $remote_credential -ComputerName $hostname
+}
+else {
+    &#34;WinRM disabled and not a local collector&#34;
+    exit 1
+}
+
+$scriptBlock = {
+
+    Get-ADUser -Filter * | Format-Table Name,SamAccountName,Enabled -A
+}
+
+if ($session) {
+
+
+    $returnData = Invoke-Command -Session  $session -ScriptBlock $scriptBlock
+
+    #try it again.  Sometimes fails the first time
+    if (($null -eq $returnData) -or ($returnData -eq &#34;&#34;)) {
+        $returnData = Invoke-Command -Session  $session -ScriptBlock $scriptBlock
+    }
+    $returnData    
+
+    Get-PSSession | Remove-PSSession -ErrorAction SilentlyContinue
+    if ($DEBUG) { &#34;--DEBUG-- Successful output&#34; }
+    EXIT 0
+}
+else {
+    exit 1
+}</value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>windowsscript</name>
+            <value></value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>linuxscript</name>
+            <value></value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>windowscmdline</name>
+            <value></value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>linuxcmdline</name>
+            <value></value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>properties</name>
+            <value></value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>csfileformat</name>
+            <value>arbitrary</value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>cstimestampformat</name>
+            <value>yyyy-MM-dd hh:mm:ss z</value>
+            <comment></comment>
+        </attribute>
+        </attributes>
+        <datapoints>
+        <datapoint>
+            <name>anyChange</name>
+            <originId>UHpCWiSzR7eyZp39L33VBA</originId>
+            <dataType>1</dataType>
+            <type>2</type>
+            <postprocessormethod>none</postprocessormethod>
+            <postprocessorparam>{&#34;format&#34;:&#34;arbitrary&#34;,&#34;diff_check&#34;:{}}</postprocessorparam>
+            <usevalue></usevalue>
+            <alertexpr>= 1</alertexpr>
+            <alertmissing>1</alertmissing>
+            <alertsubject></alertsubject>
+            <alertbody></alertbody>
+            <enableanomalyalertsuppression></enableanomalyalertsuppression>
+            <adadvsettingenabled>false</adadvsettingenabled>
+            <warnadadvsetting></warnadadvsetting>
+            <erroradadvsetting></erroradadvsetting>
+            <criticaladadvsetting></criticaladadvsetting>
+            <description>A change was detected in the configuration or membership of Active Directory Computers.</description>
+            <maxvalue>1</maxvalue>
+            <minvalue>0</minvalue>
+            <userparam1>ignore</userparam1>
+            <userparam2>true</userparam2>
+            <userparam3>60</userparam3>
+            <iscomposite>false</iscomposite>
+            <rpn></rpn>
+            <alertTransitionIval>0</alertTransitionIval>
+            <alertClearTransitionIval>0</alertClearTransitionIval>
+        </datapoint>
+        <datapoint>
+            <name>cantRetrieve</name>
+            <originId>CxPVcC4IS8alAeTjf2GgEA</originId>
+            <dataType>1</dataType>
+            <type>2</type>
+            <postprocessormethod>none</postprocessormethod>
+            <postprocessorparam>{&#34;fetch_check&#34;:{&#34;fetch&#34;:0},&#34;format&#34;:&#34;arbitrary&#34;}</postprocessorparam>
+            <usevalue></usevalue>
+            <alertexpr>= 1</alertexpr>
+            <alertmissing>1</alertmissing>
+            <alertsubject></alertsubject>
+            <alertbody></alertbody>
+            <enableanomalyalertsuppression></enableanomalyalertsuppression>
+            <adadvsettingenabled>false</adadvsettingenabled>
+            <warnadadvsetting></warnadadvsetting>
+            <erroradadvsetting></erroradadvsetting>
+            <criticaladadvsetting></criticaladadvsetting>
+            <description>The configuration of Active Directory Computers could not be retrieved.</description>
+            <maxvalue>1</maxvalue>
+            <minvalue>0</minvalue>
+            <userparam1>fetch</userparam1>
+            <userparam2>false</userparam2>
+            <userparam3>0</userparam3>
+            <iscomposite>false</iscomposite>
+            <rpn></rpn>
+            <alertTransitionIval>0</alertTransitionIval>
+            <alertClearTransitionIval>0</alertClearTransitionIval>
+        </datapoint>
+        </datapoints>
+        <graphs>
+        </graphs>
+        <overviewgraphs>
+        </overviewgraphs>
+        <scripts>
+        </scripts>
+    </entry>
+</feed>
