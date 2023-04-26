@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<feed  version="1.0" hasPendingRequests="false" >
+  <company></company>
+  <status>200</status>
+  <errmsg>OK</errmsg>
+  <interval>0</interval>
+    <entry type="predatasource">
+        <version>1682535458</version>
+        <name>Windows Certificates All</name>
+        <displayedas>Windows Certificates All</displayedas>
+        <description>Scan computer for certificates in all stores, report any that are expiring soon or have already expired.</description>
+        <collector>script</collector>
+        <hasMultiInstances>true</hasMultiInstances>
+        <useWildValueAsUniqueIdentifier>false</useWildValueAsUniqueIdentifier>
+        <schedule>3600</schedule>
+        <appliesTo>isWindows()</appliesTo>
+        <wildcardauto>true</wildcardauto>
+        <wildcardpersist>false</wildcardpersist>
+        <wildcardlinuxscript>ad_script</wildcardlinuxscript>
+        <wildcardlinuxcmdline>type=&#34;powerShell&#34; </wildcardlinuxcmdline>
+        <wildcardwinscript>ad_script</wildcardwinscript>
+        <wildcardwincmdline>type=&#34;powerShell&#34; </wildcardwincmdline>
+        <wildcardgroovyscript>$TargetHostName = &#39;##SYSTEM.SYSNAME##&#39;
+$CollectorHostName = $env:computername
+$TargetUserName = &#39;##wmi.user##&#39;
+$TargetPassword = &#39;##wmi.pass##&#39;
+$DebugMode = $false
+
+$ScriptBlock = {
+    param (
+        [bool]$Debug
+    )
+
+    $CertList = Get-ChildItem -Path cert:LocalMachine -Recurse
+    Foreach ($Cert in $CertList) {
+        $SerialNumber = $Cert.SerialNumber
+        $FriendlyName = $Cert.FriendlyName;
+        if ($FriendlyName -eq &#34;&#34;) { $FriendlyName = $SerialNumber }
+        
+        if ($SerialNumber -ne &#34;&#34;) {
+            $Props = @()
+            $propPrefix = &#34;auto.windowscerts&#34;
+            $Props += &#34;${propPrefix}.serialnum=$SerialNumber&#34;
+            $Store = ($Cert.PSParentPath -split &#34;::&#34;)[1]
+            if ($Store -ne &#34;&#34;) { $Props += &#34;${propPrefix}.store=$Store&#34; }
+            $NotAfter = $Cert.NotAfter
+            if ($NotAfter -ne &#34;&#34;) { $Props += &#34;${propPrefix}.expires=$NotAfter&#34; }
+            $Subject = $Cert.Subject
+            if ($Subject -ne &#34;&#34;) { $Props += &#34;${propPrefix}.subject=$Subject&#34; }
+            $Issuer = $Cert.Issuer
+            if ($Issuer -ne &#34;&#34;) { $Props += &#34;${propPrefix}.issuer=$Issuer&#34; }
+            $Thumbprint = $Cert.Thumbprint
+            if ($Thumbprint -ne &#34;&#34;) { $Props += &#34;${propPrefix}.thumbprint=$Thumbprint&#34; }
+            $DNSNameList = $Cert.DNSNameList
+            if ($DNSNameList -ne &#34;&#34;) { $Props += &#34;${propPrefix}.dnsnames=$DNSNameList&#34; }
+
+            Write-Host &#34;$SerialNumber##$FriendlyName##$Subject####&#34;, ($Props -join &#39;&#38;&#39;)
+        }
+    }
+}
+
+if ($TargetHostName -eq $CollectorHostName)
+{
+    Invoke-Command -ScriptBlock $ScriptBlock -ArgumentList @($DebugMode)
+}
+else
+{
+    #If WMI creds undefined - invoke remote command without creds, if not - create credential object and use it for authorization
+    if (($TargetUserName -Match &#34;wmi.user&#34; -and $TargetPassword -Match &#34;wmi.pass&#34;) -or 
+        ($TargetUserName -eq &#34;&#34; -and $TargetPassword -eq &#34;&#34;))
+    {
+        Invoke-Command -ComputerName $TargetHostName -ScriptBlock $ScriptBlock -ArgumentList @($DebugMode)
+    }
+    else
+    {
+        $TargetCredentials = New-Object System.Management.Automation.PSCredential ($TargetUserName, $(ConvertTo-SecureString $TargetPassword -AsPlainText -Force))
+        Invoke-Command -ComputerName $TargetHostName -ScriptBlock $ScriptBlock -Credential $TargetCredentials -ArgumentList @($DebugMode)
+    }
+}
+
+Exit 0</wildcardgroovyscript>
+        <wildcardschedule>1440</wildcardschedule>
+        <wildcarddisable>false</wildcarddisable>
+        <wildcarddeleteinactive>false</wildcarddeleteinactive>
+        <agdmethod>ilp</agdmethod>
+        <agdparams>auto.windowscerts.store</agdparams>
+        <group></group>
+        <tags></tags>
+        <technology></technology>
+        <adlist><![CDATA[{"agdmethod":"ilp","method":"ad_script","agdparams":"auto.windowscerts.store","id":0,"filters":[],"params":{"type":"powerShell","groovyscript":"$TargetHostName = '##SYSTEM.SYSNAME##'\n$CollectorHostName = $env:computername\n$TargetUserName = '##wmi.user##'\n$TargetPassword = '##wmi.pass##'\n$DebugMode = $false\n\n$ScriptBlock = {\n    param (\n        [bool]$Debug\n    )\n\n    $CertList = Get-ChildItem -Path cert:LocalMachine -Recurse\n    Foreach ($Cert in $CertList) {\n        $SerialNumber = $Cert.SerialNumber\n        $FriendlyName = $Cert.FriendlyName;\n        if ($FriendlyName -eq \"\") { $FriendlyName = $SerialNumber }\n        \n        if ($SerialNumber -ne \"\") {\n            $Props = @()\n            $propPrefix = \"auto.windowscerts\"\n            $Props += \"${propPrefix}.serialnum=$SerialNumber\"\n            $Store = ($Cert.PSParentPath -split \"::\")[1]\n            if ($Store -ne \"\") { $Props += \"${propPrefix}.store=$Store\" }\n            $NotAfter = $Cert.NotAfter\n            if ($NotAfter -ne \"\") { $Props += \"${propPrefix}.expires=$NotAfter\" }\n            $Subject = $Cert.Subject\n            if ($Subject -ne \"\") { $Props += \"${propPrefix}.subject=$Subject\" }\n            $Issuer = $Cert.Issuer\n            if ($Issuer -ne \"\") { $Props += \"${propPrefix}.issuer=$Issuer\" }\n            $Thumbprint = $Cert.Thumbprint\n            if ($Thumbprint -ne \"\") { $Props += \"${propPrefix}.thumbprint=$Thumbprint\" }\n            $DNSNameList = $Cert.DNSNameList\n            if ($DNSNameList -ne \"\") { $Props += \"${propPrefix}.dnsnames=$DNSNameList\" }\n\n            Write-Host \"$SerialNumber##$FriendlyName##$Subject####\", ($Props -join '&')\n        }\n    }\n}\n\nif ($TargetHostName -eq $CollectorHostName)\n{\n    Invoke-Command -ScriptBlock $ScriptBlock -ArgumentList @($DebugMode)\n}\nelse\n{\n    #If WMI creds undefined - invoke remote command without creds, if not - create credential object and use it for authorization\n    if (($TargetUserName -Match \"wmi.user\" -and $TargetPassword -Match \"wmi.pass\") -or \n        ($TargetUserName -eq \"\" -and $TargetPassword -eq \"\"))\n    {\n        Invoke-Command -ComputerName $TargetHostName -ScriptBlock $ScriptBlock -ArgumentList @($DebugMode)\n    }\n    else\n    {\n        $TargetCredentials = New-Object System.Management.Automation.PSCredential ($TargetUserName, $(ConvertTo-SecureString $TargetPassword -AsPlainText -Force))\n        Invoke-Command -ComputerName $TargetHostName -ScriptBlock $ScriptBlock -Credential $TargetCredentials -ArgumentList @($DebugMode)\n    }\n}\n\nExit 0"}}]]></adlist>
+        <schemaVersion>2</schemaVersion>
+    <integrationMetadata>
+        <integrationVersion>1.4.0</integrationVersion>
+        <integrationAuthorCompanyUuid>b8a87cf2-5720-47de-8c73-89e23def36f1</integrationAuthorCompanyUuid>
+        <integrationLineageId>tzMznBv_QK6WFTKcgKlttA</integrationLineageId>
+        <integrationChecksum>ebb59ee13ac3d5b069cbf828f5f7a6ff</integrationChecksum>
+        <integrationAuthorNamespace>willingmindssandbox</integrationAuthorNamespace>
+        <integrationId>1cb817c3-9c35-4b47-ad8b-e1fa7a380d6c</integrationId>
+        <integrationLocator>KPNWGW</integrationLocator>
+        <integrationName>Windows Certificates-</integrationName>
+        <integrationStatus>Community</integrationStatus>
+        <integrationPublishedAtMS>1593549349373</integrationPublishedAtMS>
+        <integrationIsPrivate></integrationIsPrivate>
+    </integrationMetadata>
+        <dataSourceType>1</dataSourceType>
+        <attributes>
+        <attribute>
+            <name>scripttype</name>
+            <value>powerShell</value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>scriptgroovy</name>
+            <value>$Instance = &#39;##WILDVALUE##&#39;
+$TargetHostName = &#39;##SYSTEM.SYSNAME##&#39;
+$CollectorHostName = $env:computername
+$TargetUserName = &#39;##wmi.user##&#39;
+$TargetPassword = &#39;##wmi.pass##&#39;
+$DebugMode = $false
+
+$ScriptBlock = {
+    param (
+        [bool]$Debug,
+        [String]$SerialNumber
+    )
+    
+    if ($Cert = Get-ChildItem -Path cert:LocalMachine -Recurse | Where-Object { $_.SerialNumber -eq $SerialNumber }) {
+        $TimeSpan = New-TimeSpan -Start (Get-Date) -End $Cert.NotAfter
+        $DaysLeft = $TimeSpan.Days
+        Write-Host &#34;DaysLeft=$DaysLeft&#34;
+    }
+}
+
+if ($TargetHostName -eq $CollectorHostName)
+{
+    Invoke-Command -ScriptBlock $ScriptBlock -ArgumentList @($DebugMode,$Instance)
+}
+else
+{
+    #If WMI creds undefined - invoke remote command without creds, if not - create credential object and use it for authorization
+    if (($TargetUserName -Match &#34;wmi.user&#34; -and $TargetPassword -Match &#34;wmi.pass&#34;) -or 
+        ($TargetUserName -eq &#34;&#34; -and $TargetPassword -eq &#34;&#34;))
+    {
+        Invoke-Command -ComputerName $TargetHostName -ScriptBlock $ScriptBlock -ArgumentList @($DebugMode,$Instance)
+    }
+    else
+    {
+        $TargetCredentials = New-Object System.Management.Automation.PSCredential ($TargetUserName, $(ConvertTo-SecureString $TargetPassword -AsPlainText -Force))
+        Invoke-Command -ComputerName $TargetHostName -ScriptBlock $ScriptBlock -Credential $TargetCredentials -ArgumentList @($DebugMode,$Instance)
+    }
+}
+
+Exit 0</value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>windowsscript</name>
+            <value></value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>linuxscript</name>
+            <value></value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>windowscmdline</name>
+            <value></value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>linuxcmdline</name>
+            <value></value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>properties</name>
+            <value></value>
+            <comment></comment>
+        </attribute>
+        <attribute>
+            <name>manualConnections</name>
+            <value></value>
+            <comment></comment>
+        </attribute>
+        </attributes>
+        <datapoints>
+        <datapoint>
+            <name>DaysLeft</name>
+            <originId>i08u0HUMQ5ac-oJEYfjvqg</originId>
+            <dataType>7</dataType>
+            <type>2</type>
+            <postprocessormethod>namevalue</postprocessormethod>
+            <postprocessorparam>DaysLeft</postprocessorparam>
+            <usevalue>output</usevalue>
+            <alertexpr></alertexpr>
+            <alertmissing>1</alertmissing>
+            <alertsubject></alertsubject>
+            <alertbody></alertbody>
+            <enableanomalyalertsuppression></enableanomalyalertsuppression>
+            <adadvsettingenabled>false</adadvsettingenabled>
+            <warnadadvsetting></warnadadvsetting>
+            <erroradadvsetting></erroradadvsetting>
+            <criticaladadvsetting></criticaladadvsetting>
+            <description></description>
+            <maxvalue></maxvalue>
+            <minvalue></minvalue>
+            <userparam1></userparam1>
+            <userparam2></userparam2>
+            <userparam3></userparam3>
+            <iscomposite>false</iscomposite>
+            <rpn></rpn>
+            <alertTransitionIval>0</alertTransitionIval>
+            <alertClearTransitionIval>0</alertClearTransitionIval>
+        </datapoint>
+        <datapoint>
+            <name>Expired</name>
+            <originId>jICY06mHTYSdbsFRYa_LvA</originId>
+            <dataType>7</dataType>
+            <type>2</type>
+            <postprocessormethod>expression</postprocessormethod>
+            <postprocessorparam>if(lt(DaysLeft,0),0-DaysLeft,0)</postprocessorparam>
+            <usevalue></usevalue>
+            <alertexpr>&#62; 0 0</alertexpr>
+            <alertmissing>1</alertmissing>
+            <alertsubject>Windows Certificate ##auto.windowscerts.serialnum## on ##HOST## Expired ##VALUE## Days Ago</alertsubject>
+            <alertbody>This certificate has expired and should be replaced within the &#39;##auto.windowscerts.store##&#39; certificate store on ##HOST##. This alert will continue to be active until the expired certificate is replaced.
+
+Details:
+
+Expired On: ##auto.windowscerts.expires##
+Serial Number: ##auto.windowscerts.serialnum##
+Thumbprint: ##auto.windowscerts.thumbprint##
+DNS Names: ##auto.windowscerts.dnsnames##</alertbody>
+            <enableanomalyalertsuppression></enableanomalyalertsuppression>
+            <adadvsettingenabled>false</adadvsettingenabled>
+            <warnadadvsetting></warnadadvsetting>
+            <erroradadvsetting></erroradadvsetting>
+            <criticaladadvsetting></criticaladadvsetting>
+            <description></description>
+            <maxvalue></maxvalue>
+            <minvalue>0</minvalue>
+            <userparam1></userparam1>
+            <userparam2></userparam2>
+            <userparam3></userparam3>
+            <iscomposite>false</iscomposite>
+            <rpn></rpn>
+            <alertTransitionIval>0</alertTransitionIval>
+            <alertClearTransitionIval>0</alertClearTransitionIval>
+        </datapoint>
+        <datapoint>
+            <name>ExpiresIn</name>
+            <originId>C0ztkRRiR_Ovbh-jTpczEg</originId>
+            <dataType>7</dataType>
+            <type>2</type>
+            <postprocessormethod>expression</postprocessormethod>
+            <postprocessorparam>DaysLeft</postprocessorparam>
+            <usevalue></usevalue>
+            <alertexpr>&#60; 30 14</alertexpr>
+            <alertmissing>1</alertmissing>
+            <alertsubject>Windows Certificate ##auto.windowscerts.serialnum## on ##HOST## Expires in ##VALUE## Days</alertsubject>
+            <alertbody>This certificate will expire in ##VALUE## days. Prior to expiration, the certificate should be replaced within the &#39;##auto.windowscerts.store##&#39; certificate store on ##HOST##.
+
+Details:
+
+Expires On: ##auto.windowscerts.expires##
+Serial Number: ##auto.windowscerts.serialnum##
+Thumbprint: ##auto.windowscerts.thumbprint##
+DNS Names: ##auto.windowscerts.dnsnames##</alertbody>
+            <enableanomalyalertsuppression></enableanomalyalertsuppression>
+            <adadvsettingenabled>false</adadvsettingenabled>
+            <warnadadvsetting></warnadadvsetting>
+            <erroradadvsetting></erroradadvsetting>
+            <criticaladadvsetting></criticaladadvsetting>
+            <description></description>
+            <maxvalue></maxvalue>
+            <minvalue>0</minvalue>
+            <userparam1></userparam1>
+            <userparam2></userparam2>
+            <userparam3></userparam3>
+            <iscomposite>false</iscomposite>
+            <rpn></rpn>
+            <alertTransitionIval>0</alertTransitionIval>
+            <alertClearTransitionIval>0</alertClearTransitionIval>
+        </datapoint>
+        </datapoints>
+        <graphs>
+        </graphs>
+        <overviewgraphs>
+        </overviewgraphs>
+        <scripts>
+        </scripts>
+    </entry>
+</feed>
